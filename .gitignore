@@ -1,1 +1,10 @@
-Readme.pdf
+# PDFs generados
+*.pdf
+
+# Archivos temporales de VSCode
+.vscode/
+
+# Backups de editores
+*~
+*.swp
+*.swo
