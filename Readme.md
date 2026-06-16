@@ -246,6 +246,26 @@ Clonamos la imagen base, nuevamente, seleccionando "Generate new MAC addresses..
 
 A esta la nombraremos "ciber-web". En esta, configuraremos el servidor (front + php) que hablara con la base de datos.
 Recordar siempre que debemos asignarle una segunda interfaz de red, con opcion "internal network", llamada "ciber".
+En este caso en particular (y solo para este servidor), vamos a configurar en la interfaz NAT, una opcion llamada "port forwarding", que nos va a permitir consumir el servidor web desde nuestra pc.
+
+Dentro de VirtualBox, ingresamos a la VM ciber-web, luego a las interfaces de red, y en la interfaz de tipo NAT, abirmos las configuraciones avanzadas, y vamos a "Port Forwarding" y vamos a setearle:
+
+Name = HTTP
+Protocol = TCP
+Host IP = vacio
+Host Port = 8080
+Guest IP = vacio
+Guest Port = 80
+
+
+<p align="center">
+  <img src="assets/dioses-03.png">
+</p>
+
+<p align="center">
+  <img src="assets/dioses-04.png">
+</p>
+
 
 Seguimos el mismo procedimiento para asignarle IP privada, como hicimos con la anterior
 
