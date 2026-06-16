@@ -242,6 +242,61 @@ En el laboratorio, tardo aproximadamente 10 minutos, y la db estaria lista unos 
 
 ## 5. Segundo servidor, "ciber-web"
 
+Clonamos la imagen base, nuevamente, seleccionando "Generate new MAC addresses... ", y luego "Full Clone"
+
+A esta la nombraremos "ciber-web". En esta, configuraremos el servidor (front + php) que hablara con la base de datos.
+Recordar siempre que debemos asignarle una segunda interfaz de red, con opcion "internal network", llamada "ciber".
+
+Seguimos el mismo procedimiento para asignarle IP privada, como hicimos con la anterior
+
+ ~~~ bash
+
+ip -br addr
+
+ ~~~
+
+ veremos algo como:
+
+ ~~~ bash
+lo     UNKNOWN 127.0.0.1/8 ::1/128
+enp0s3 UP      10.0.2.15/24 fe80::4563:f313../64
+enp0s8 DOWN
+ ~~~
+
+ la interfaz que nos interesa en este momento, es la enp0s8, que es la de Internal network
+ con un editor de texto, abrimos 
+
+ ~~~ bash
+sudo vim /etc/network/interfaces.d/internal.cfg
+
+# y una vez dentro, debemos agregar:
+
+auto enp0s8
+iface enp0s8 inet static
+    address 192.168.100.20/24
+ ~~~
+
+ guardamos, y levantamos la interfaz de red
+
+ ~~~ bash
+sudo ip addr add 192.168.100.20/24 dev enp0s8
+sudo ip link set enp0s8 up
+ ~~~
+
+ahora si, procedemos a clonar el repo correspondiente, como hicimos con el servidor anterior, en /tmp
+
+~~~ bash
+cd /tmp
+git clone https://github.com/aleconde12/lab-dioses-scripts.git
+cd lab-dioses-scripts
+
+# ejecutamos el script correspondiente
+
+sudo bash ./webserver/web-init.sh
+~~~
+
+
+
 ## 6. Tercer servidor, "ciber-dhcp"
 
 ## 7. Cuarto servirod, "ciber-files"
