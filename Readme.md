@@ -148,14 +148,36 @@ En todas las VMs vamos a necesitar el puerto 22035 funcionando para conexion SSH
 ~~~ bash
 Port 22035 # Previamente era Port 22
 
-# Descomentamos la linea
+# Descomentamos la linea 
 PasswordAuthentication yes
 ~~~
 
+### Crear usuario sudoer ciber-user
+
+Este usuario nos permitira hacer SSH en todas las VMs, aplicando las mejores practicas, de no usar el usuario root
+
+~~~ bash
+adduser ciber-user
+usermod -aG sudo ciber-user
+~~~
+
+Con estas configuraciones, estamos listos para clonar y configurar la primer VM 
+
 ## 4. Primer servidor, "ciber-db"
 
-Luego de clonar la imagen base, debemos ingresar a la VM llamada "ciber-db". En esta, configuraremos la base de datos. Las credenciales para todas las VMs son 
-usuario : root
+### Preparar la VM
+
+Clonamos la imagen base, seleccionando "Generate new MAC addresses... ", y luego "Full Clone"
+
+Luego de clonar la imagen base a otra VM, la nombraremos "ciber-db". En esta, configuraremos la base de datos.
+En la parte de networking o redes en virtual box, debemos asignarle una segunda interfaz de red, con opcion "internal network", la cual llamaremos simplemente "ciber"
+
+<p align="center">
+  <img src="assets/dioses-02.png">
+</p>
+
+Las credenciales para todas las VMs son 
+usuario : ciber-user
 contraseña : ciber123
 
 Lo primero que debemos hacer es asignarle una IP privada. Para eso:
@@ -199,3 +221,22 @@ sudo ip link set enp0s8 up
  ~~~ bash
 enp0s8   UP   192.168.100.10/24
  ~~~
+
+### Clonar el repo
+
+Nos movemos a /tmp, para evitar ocupar espacio innecesario en el servidor, clonamos el repo, y ejecutamos el script correspondiente. En este caso, /db/db-init.sh
+
+
+~~~ bash
+cd /tmp
+git clone https://github.com/aleconde12/lab-dioses-scripts.git
+cd lab-dioses-scripts
+
+# ejecutamos el script correspondiente
+
+sudo bash ./db/db-init.sh
+~~~
+
+Nota: Este proceso puede tardar bastante, dependiendo de las capacidades de cada PC.
+En el laboratorio, tardo aproximadamente 10 minutos, y la db estaria lista unos 7 minutos despues de la finalizacion del script.
+
