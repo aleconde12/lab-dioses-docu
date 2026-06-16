@@ -1,10 +1,10 @@
 # Laboratorio "Ciber Dioses"
 
-## Informacion general
+## 1. Informacion general
 
 El laboratorio "Ciber Dioses" es un proyecto que, mediante 4 servidores o maquinas virtuales debian 13, conforma un sistema de Cibercafe, un negocio muy popular de la decada del 2000.
 
-## Como funciona
+## 2. Como funciona
 
 Para lograr el sistema de cibercafe, vamos a necesitar una "golden-image", o, imagen base, que va a ser el sistema operativo que corra en los 4 servidores.
 Esta imagen base tendra instalados los paquetes minimos necesarios para todas las VMs. Luego, en cada una, se instalaran paquetes necesarios para cada fin, ejemplo, php en el webserver, mysql en el db-server, etc.
@@ -22,7 +22,7 @@ Este es un listado de lo que necesitamos en cada VM y una descripcion breve de p
 -  net-tools: ifconfig, netstat, etc (pruebas networking)
 -  iproute2: ip addr, ip route (mas pruebas de networking)
 -  dnsutils: nslookup, dig (aun mas pruebas de networking)
--  openssh-server: Acceso SSH
+-  openssh-server: Acceso SSH (ademas del paquete, debe configurarse el puerto 22035)
 -  rsync: Backups y sincronización
 -  unzip: Descomprimir ZIP
 -  zip: Comprimir ZIP
@@ -56,3 +56,146 @@ Nota: Para poder clonarnos los repositorios sin tener que configurar usuarios de
 <p align="center">
   <img src="assets/dioses-01.png">
 </p>
+
+### Breve ejemplo de un script
+
+Una vez que desplegamos el primer servidor, por ejemplo, ciber-db, y configuramos su ip interna, ya estamos listos para ejecutar el script de inicializacion o init.
+Dentro de la VM, en la terminal, ejecutamos
+
+~~~ bash
+# para clonar el repo
+git clone https://github.com/aleconde12/lab-dioses-scripts.git
+
+# para ejecutar el script
+bash ./lab-dioses-scripts/db/db-init.sh
+~~~
+
+Dicho script contiene cosas genericas (para todos los scripts) como
+
+~~~ bash
+#!/bin/bash
+
+set -e
+
+# Definir hostname y /etc/hosts
+
+grep -q "# Laboratorio Ciber" /etc/hosts || cat >> /etc/hosts << 'EOF'
+
+# Laboratorio Ciber
+192.168.100.10 ciber-db
+192.168.100.20 ciber-web
+192.168.100.30 ciber-dhcp
+192.168.100.40 ciber-files
+
+EOF
+
+NEW_HOSTNAME="ciber-db"
+
+hostnamectl set-hostname "$NEW_HOSTNAME"
+
+echo "Hostname configurado como: $NEW_HOSTNAME"
+
+~~~
+
+Esto lo que hace es, que el script deje de ejecutarse si se encuentra con algun error (set -e), que defina las ips y los hostnames dentro de /etc/hosts, que defina el hostname como "ciber-db" en este caso, y de ahi en mas, seguir con sus funciones. Eso lo veremos en detalle por cada uno de los servidores.
+
+## 3. Golden image
+
+Como se menciono anteriormente, se instalan varios paquetes en la golden ami para que esten presentes en todos los servidores a la hora de clonarlos.
+Esto nos da un estandar, y nos aseguramos de que a ningun servidor le va a faltar algun paquete o alguna configuracion que es comun a todo el laboratorio.
+
+### Instalacion de paquetes
+
+Ejecutamos
+
+~~~ bash
+apt update
+apt install -y \
+  sudo \
+  vim \
+  nano \
+  curl \
+  wget \
+  git \
+  net-tools \
+  iproute2 \
+  dnsutils \
+  openssh-server \
+  rsync \
+  unzip \
+  zip \
+  htop \
+  tree \
+  less
+~~~
+
+Segun cada PC, esto puede llegar a demorar 
+
+### Hostname generico
+
+En un futuro, cada hostname tendra su propio nombre ("ciber-db", "ciber-web", etc), asique ahora para golden image, lo dejamos en "changeme", cosa de que si vemos es nombre, sabemos que nos falto cambiar el hostname
+
+`hostnamectl set-hostname changeme`
+
+### Layout de Teclado LATAM
+
+Esto sirve para no tener problemas con los caracteres de la ISO debian y nuestro teclado latam. Ejecutamos `dpkg-reconfigure keyboard-configuration` y seleccionamos `Spanish (Latin American)`
+
+### Abrir puerto 22035 por defecto
+
+En todas las VMs vamos a necesitar el puerto 22035 funcionando para conexion SSH, para eso abrimos /etc/ssh/sshd_config con algun editor de texto, y modificamos las siguientes 2 lineas
+
+~~~ bash
+Port 22035 # Previamente era Port 22
+
+# Descomentamos la linea
+PasswordAuthentication yes
+~~~
+
+## 4. Primer servidor, "ciber-db"
+
+Luego de clonar la imagen base, debemos ingresar a la VM llamada "ciber-db". En esta, configuraremos la base de datos. Las credenciales para todas las VMs son 
+usuario : root
+contraseña : ciber123
+
+Lo primero que debemos hacer es asignarle una IP privada. Para eso:
+
+ ~~~ bash
+
+ip -br addr
+
+ ~~~
+
+ veremos algo como:
+
+ ~~~ bash
+lo     UNKNOWN 127.0.0.1/8 ::1/128
+enp0s3 UP      10.0.2.15/24 fe80::4563:f313../64
+enp0s8 DOWN
+ ~~~
+
+ la interfaz que nos interesa en este momento, es la enp0s8, que es la de Internal network
+ con un editor de texto, abrimos 
+
+ ~~~ bash
+sudo vim /etc/network/interfaces.d/internal.cfg
+
+# y una vez dentro, debemos agregar:
+
+auto enp0s8
+iface enp0s8 inet static
+    address 192.168.100.10/24
+ ~~~
+
+ guardamos, y levantamos la interfaz de red
+
+ ~~~ bash
+sudo ip addr add 192.168.100.10/24 dev enp0s8
+sudo ip link set enp0s8 up
+ ~~~
+
+ luego, verificamos, nuevamente con ip -br addr, y deberiamos ver algo como 
+
+ ~~~ bash
+enp0s8   UP   192.168.100.10/24
+ ~~~
