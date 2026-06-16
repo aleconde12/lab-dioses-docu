@@ -240,3 +240,8 @@ sudo bash ./db/db-init.sh
 Nota: Este proceso puede tardar bastante, dependiendo de las capacidades de cada PC.
 En el laboratorio, tardo aproximadamente 10 minutos, y la db estaria lista unos 7 minutos despues de la finalizacion del script.
 
+## 5. Segundo servidor, "ciber-web"
+
+## 6. Tercer servidor, "ciber-dhcp"
+
+## 7. Cuarto servirod, "ciber-files"
