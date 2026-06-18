@@ -317,6 +317,60 @@ sudo bash ./webserver/web-init.sh
 
 
 
-## 6. Tercer servidor, "ciber-dhcp"
+## 6. Tercer servidor, "ciber-files"
 
-## 7. Cuarto servirod, "ciber-files"
+Clonamos la imagen base, nuevamente, seleccionando "Generate new MAC addresses... ", y luego "Full Clone"
+
+A esta la nombraremos "ciber-files". En esta, configuraremos el servidor FTP + Samba.
+Recordar siempre que debemos asignarle una segunda interfaz de red, con opcion "internal network", llamada "ciber".
+
+Seguimos el mismo procedimiento para asignarle IP privada, como hicimos con la anterior
+
+ ~~~ bash
+
+ip -br addr
+
+ ~~~
+
+ veremos algo como:
+
+ ~~~ bash
+lo     UNKNOWN 127.0.0.1/8 ::1/128
+enp0s3 UP      10.0.2.15/24 fe80::4563:f313../64
+enp0s8 DOWN
+ ~~~
+
+ procedemos con enp0s8
+
+ ~~~ bash
+sudo vim /etc/network/interfaces.d/internal.cfg
+
+# y una vez dentro, debemos agregar:
+
+auto enp0s8
+iface enp0s8 inet static
+    address 192.168.100.40/24
+ ~~~
+
+ guardamos, y levantamos la interfaz de red
+
+ ~~~ bash
+sudo ip addr add 192.168.100.40/24 dev enp0s8
+sudo ip link set enp0s8 up
+ ~~~
+
+
+nos movemos a /tmp y volvemos a clonar el repo, y ejecutar el script correspondiente
+
+~~~ bash
+cd /tmp
+git clone https://github.com/aleconde12/lab-dioses-scripts.git
+cd lab-dioses-scripts
+
+# ejecutamos el script correspondiente
+
+sudo bash ./files/files-init.sh
+~~~
+
+
+## 7. Cuarto servidor, "ciber-dhcp"
