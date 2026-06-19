@@ -126,7 +126,7 @@ apt install -y \
   zip \
   htop \
   tree \
-  less
+  ftp
 ~~~
 
 Segun cada PC, esto puede llegar a demorar 
