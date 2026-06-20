@@ -180,48 +180,6 @@ Las credenciales para todas las VMs son
 usuario : ciber-user
 contraseña : ciber123
 
-Lo primero que debemos hacer es asignarle una IP privada. Para eso:
-
- ~~~ bash
-
-ip -br addr
-
- ~~~
-
- veremos algo como:
-
- ~~~ bash
-lo     UNKNOWN 127.0.0.1/8 ::1/128
-enp0s3 UP      10.0.2.15/24 fe80::4563:f313../64
-enp0s8 DOWN
- ~~~
-
- la interfaz que nos interesa en este momento, es la enp0s8, que es la de Internal network
- con un editor de texto, abrimos 
-
- ~~~ bash
-sudo vim /etc/network/interfaces.d/internal.cfg
-
-# y una vez dentro, debemos agregar:
-
-auto enp0s8
-iface enp0s8 inet static
-    address 192.168.100.10/24
- ~~~
-
- guardamos, y levantamos la interfaz de red
-
- ~~~ bash
-sudo ip addr add 192.168.100.10/24 dev enp0s8
-sudo ip link set enp0s8 up
- ~~~
-
- luego, verificamos, nuevamente con ip -br addr, y deberiamos ver algo como 
-
- ~~~ bash
-enp0s8   UP   192.168.100.10/24
- ~~~
-
 ### Clonar el repo
 
 Nos movemos a /tmp, para evitar ocupar espacio innecesario en el servidor, clonamos el repo, y ejecutamos el script correspondiente. En este caso, /db/db-init.sh
@@ -248,7 +206,7 @@ A esta la nombraremos "ciber-web". En esta, configuraremos el servidor (front + 
 Recordar siempre que debemos asignarle una segunda interfaz de red, con opcion "internal network", llamada "ciber".
 En este caso en particular (y solo para este servidor), vamos a configurar en la interfaz NAT, una opcion llamada "port forwarding", que nos va a permitir consumir el servidor web desde nuestra pc.
 
-Dentro de VirtualBox, ingresamos a la VM ciber-web, luego a las interfaces de red, y en la interfaz de tipo NAT, abirmos las configuraciones avanzadas, y vamos a "Port Forwarding" y vamos a setearle:
+Dentro de VirtualBox, ingresamos a la VM ciber-web, luego a las interfaces de red, y en la interfaz de tipo NAT )(la primera), abirmos las configuraciones avanzadas, y vamos a "Port Forwarding" y vamos a setearle:
 
 Name = HTTP
 Protocol = TCP
@@ -267,43 +225,7 @@ Guest Port = 80
 </p>
 
 
-Seguimos el mismo procedimiento para asignarle IP privada, como hicimos con la anterior
-
- ~~~ bash
-
-ip -br addr
-
- ~~~
-
- veremos algo como:
-
- ~~~ bash
-lo     UNKNOWN 127.0.0.1/8 ::1/128
-enp0s3 UP      10.0.2.15/24 fe80::4563:f313../64
-enp0s8 DOWN
- ~~~
-
- la interfaz que nos interesa en este momento, es la enp0s8, que es la de Internal network
- con un editor de texto, abrimos 
-
- ~~~ bash
-sudo vim /etc/network/interfaces.d/internal.cfg
-
-# y una vez dentro, debemos agregar:
-
-auto enp0s8
-iface enp0s8 inet static
-    address 192.168.100.20/24
- ~~~
-
- guardamos, y levantamos la interfaz de red
-
- ~~~ bash
-sudo ip addr add 192.168.100.20/24 dev enp0s8
-sudo ip link set enp0s8 up
- ~~~
-
-ahora si, procedemos a clonar el repo correspondiente, como hicimos con el servidor anterior, en /tmp
+Seguimos el mismo procedimiento para clonar el repo correspondiente, como hicimos con el servidor anterior, en /tmp
 
 ~~~ bash
 cd /tmp
@@ -315,6 +237,8 @@ cd lab-dioses-scripts
 sudo bash ./webserver/web-init.sh
 ~~~
 
+Si todo funciono correctamente, podremos entrar desde nuestra PC (fuera de virtualbox) por el navegador, a `http://localhost:8080` y visualizar el front del ciber
+
 
 
 ## 6. Tercer servidor, "ciber-files"
@@ -324,43 +248,7 @@ Clonamos la imagen base, nuevamente, seleccionando "Generate new MAC addresses..
 A esta la nombraremos "ciber-files". En esta, configuraremos el servidor FTP + Samba.
 Recordar siempre que debemos asignarle una segunda interfaz de red, con opcion "internal network", llamada "ciber".
 
-Seguimos el mismo procedimiento para asignarle IP privada, como hicimos con la anterior
-
- ~~~ bash
-
-ip -br addr
-
- ~~~
-
- veremos algo como:
-
- ~~~ bash
-lo     UNKNOWN 127.0.0.1/8 ::1/128
-enp0s3 UP      10.0.2.15/24 fe80::4563:f313../64
-enp0s8 DOWN
- ~~~
-
- procedemos con enp0s8
-
- ~~~ bash
-sudo vim /etc/network/interfaces.d/internal.cfg
-
-# y una vez dentro, debemos agregar:
-
-auto enp0s8
-iface enp0s8 inet static
-    address 192.168.100.40/24
- ~~~
-
- guardamos, y levantamos la interfaz de red
-
- ~~~ bash
-sudo ip addr add 192.168.100.40/24 dev enp0s8
-sudo ip link set enp0s8 up
- ~~~
-
-
-nos movemos a /tmp y volvemos a clonar el repo, y ejecutar el script correspondiente
+Nos movemos a /tmp y volvemos a clonar el repo, y ejecutar el script correspondiente
 
 ~~~ bash
 cd /tmp
@@ -372,5 +260,44 @@ cd lab-dioses-scripts
 sudo bash ./files/files-init.sh
 ~~~
 
+al termino de ejecutar el script, utilizamos estos comandos para verificar que samba y ftp quedo corriendo ok:
+
+~~~ bash
+
+systemctl status smbd # debe mostrar "active, running, enabled, ready to serve connections"
+
+systemctl status vsftpd # debe mostrar "active, running, enabled"
+
+ss -tlnp # opcional, verificar puertos abiertos, ver 21(FTP), 139 y 445(Samba), 22035(SSH)
+
+~~~
+
 
 ## 7. Cuarto servidor, "ciber-dhcp"
+
+Clonamos la imagen base, nuevamente, seleccionando "Generate new MAC addresses... ", y luego "Full Clone"
+
+A esta la nombraremos "ciber-dhcp".
+Recordar siempre que debemos asignarle una segunda interfaz de red, con opcion "internal network", llamada "ciber".
+
+Nos movemos a /tmp y volvemos a clonar el repo, y ejecutar el script correspondiente
+
+~~~ bash
+cd /tmp
+git clone https://github.com/aleconde12/lab-dioses-scripts.git
+cd lab-dioses-scripts
+
+# ejecutamos el script correspondiente
+
+sudo bash ./dhcp/dhcp-init.sh
+~~~
+
+Para verificar que luego de la ejecucion del script el servidor dhcp quedo funcionando ok:
+
+~~~ bash
+systemctl status isc-dhcp-server
+~~~
+
+## 8. Quinto servidor, "ciber-win"
+
+Este servidor es una PC windows, y representaria a una maquina del ciber (cliente)
