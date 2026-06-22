@@ -301,3 +301,29 @@ systemctl status isc-dhcp-server
 ## 8. Quinto servidor, "ciber-win"
 
 Este servidor es una PC windows, y representaria a una maquina del ciber (cliente)
+
+La imagen de este servidor es la mas pesada del laboratorio, por lo cual, debemos asegurarnos de tener suficientes recursos en la PC antes de correr los 5 servidores en simultaneo
+
+Importamos el archivo .ova de windows, y antes de encenderlo, configuramos su interfaz de red "internal network". En este caso, como la PC vivira internamente dentro de la red del ciber, no le asignamos interfaz NAT. Con esto tambien probamos que el servidor DHCP esta funcionando, y le asigno alguna direccion del pool de IPs.
+
+Una vez dentro de ciber-win, entramos a cmd o powershell y ejecutamos `ip /a`, y deberiamos ver una IP asignada desde nuestro servidor DHCP.
+
+Luego, para terminar de pulir las conexiones con la red interna del ciber, realizamos algunos pasos mas dentro de esta VM:
+- Editamos `C:\Windows\System32\drivers\etc\hosts` y colocamos todas las IPs y los hostnames correspondientes 
+~~~ bash
+192.168.100.10 ciber-db
+192.168.100.20 ciber-web
+192.168.100.30 ciber-dhcp
+192.168.100.40 ciber-files
+~~~
+- Corremos este comando para que funcione el usuario en samba:
+~~~ bash
+net use * /delete /y
+net use \\192.168.100.40\compartido /user:ciberfiles ciber123
+~~~
+- Y en este punto, ya deberiamos tener acceso a `\\192.168.100.40\compartido` y poder dejar archivos en toda la red interna, tambien deberiamos poder ingresar al navegador, y llegar a `http://ciber-web`, y visualizar el front del web server del ciber.
+
+## 9. Scripts de backup + cron
+
+
+
