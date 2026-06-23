@@ -1,8 +1,8 @@
-# Laboratorio "Ciber Dioses"
+# Documentacion Tecnica | Laboratorio "Ciber Dioses"
 
 ## 1. Informacion general
 
-El laboratorio "Ciber Dioses" es un proyecto que, mediante 4 servidores o maquinas virtuales debian 13, conforma un sistema de Cibercafe, un negocio muy popular de la decada del 2000.
+El laboratorio está compuesto por 4 servidores Debian 13 y una máquina cliente Windows.
 
 ## 2. Como funciona
 
@@ -101,7 +101,7 @@ Esto lo que hace es, que el script deje de ejecutarse si se encuentra con algun 
 
 ## 3. Golden image
 
-Como se menciono anteriormente, se instalan varios paquetes en la golden ami para que esten presentes en todos los servidores a la hora de clonarlos.
+Como se menciono anteriormente, se instalan varios paquetes en la golden image para que esten presentes en todos los servidores a la hora de clonarlos.
 Esto nos da un estandar, y nos aseguramos de que a ningun servidor le va a faltar algun paquete o alguna configuracion que es comun a todo el laboratorio.
 
 ### Instalacion de paquetes
@@ -141,9 +141,9 @@ En un futuro, cada hostname tendra su propio nombre ("ciber-db", "ciber-web", et
 
 Esto sirve para no tener problemas con los caracteres de la ISO debian y nuestro teclado latam. Ejecutamos `dpkg-reconfigure keyboard-configuration` y seleccionamos `Spanish (Latin American)`
 
-### Abrir puerto 22035 por defecto
+### Configurar SSH en el puerto 22035
 
-En todas las VMs vamos a necesitar el puerto 22035 funcionando para conexion SSH, para eso abrimos /etc/ssh/sshd_config con algun editor de texto, y modificamos las siguientes 2 lineas
+Se modifica la configuración de SSH para que el servicio escuche en el puerto 22035 en lugar del puerto 22, en todas las VMs.
 
 ~~~ bash
 Port 22035 # Previamente era Port 22
@@ -176,9 +176,12 @@ En la parte de networking o redes en virtual box, debemos asignarle una segunda 
   <img src="assets/dioses-02.png">
 </p>
 
-Las credenciales para todas las VMs son 
-usuario : ciber-user
-contraseña : ciber123
+Credenciales de laboratorio:
+
+- Usuario: `ciber-user`
+- Contraseña: `ciber123`
+
+Estas credenciales se utilizan únicamente en el entorno académico.
 
 ### Clonar el repo
 
@@ -239,6 +242,9 @@ sudo bash ./webserver/web-init.sh
 
 Si todo funciono correctamente, podremos entrar desde nuestra PC (fuera de virtualbox) por el navegador, a `http://localhost:8080` y visualizar el front del ciber
 
+Mas adelante, vamos a necesitar tener otro script (el de backup) en una ubicacion especifica, para poder dejarlo en crontab.
+Para eso, hacemos `sudo cp /tmp/lab-dioses-scripts/webserver/ciber-backup.sh /usr/local/bin/ciber-backup.sh`
+Lo vamos a utilizar luego, en el paso 9.
 
 
 ## 6. Tercer servidor, "ciber-files"
@@ -298,7 +304,7 @@ Para verificar que luego de la ejecucion del script el servidor dhcp quedo funci
 systemctl status isc-dhcp-server
 ~~~
 
-## 8. Quinto servidor, "ciber-win"
+## 8. Máquina cliente "ciber-win"
 
 Este servidor es una PC windows, y representaria a una maquina del ciber (cliente)
 
@@ -306,7 +312,7 @@ La imagen de este servidor es la mas pesada del laboratorio, por lo cual, debemo
 
 Importamos el archivo .ova de windows, y antes de encenderlo, configuramos su interfaz de red "internal network". En este caso, como la PC vivira internamente dentro de la red del ciber, no le asignamos interfaz NAT. Con esto tambien probamos que el servidor DHCP esta funcionando, y le asigno alguna direccion del pool de IPs.
 
-Una vez dentro de ciber-win, entramos a cmd o powershell y ejecutamos `ip /a`, y deberiamos ver una IP asignada desde nuestro servidor DHCP.
+Una vez dentro de ciber-win, entramos a cmd o powershell y ejecutamos `ipconfig /all`, y deberiamos ver una IP asignada desde nuestro servidor DHCP.
 
 Luego, para terminar de pulir las conexiones con la red interna del ciber, realizamos algunos pasos mas dentro de esta VM:
 - Editamos `C:\Windows\System32\drivers\etc\hosts` y colocamos todas las IPs y los hostnames correspondientes 
@@ -325,5 +331,28 @@ net use \\192.168.100.40\compartido /user:ciberfiles ciber123
 
 ## 9. Scripts de backup + cron
 
+Como vimos anteriormente, los backups se ejecutaran en el servidor ciber-web. Pero no podiamos ejecutar este paso hasta que esten arriba los servidores ciber-db y ciber-files.
+Basicamente se respalda: /var/www/html y base laboratorio_db (en ciber-db) y se sube a ciber-files por FTP (/srv/ftp/backups)
 
+Primero, ejecutamos manualmente, `sudo bash /usr/local/bin/ciber-backup.sh`. Si no hubo mensajes de error, nos movemos a "ciber-files" y revisamos `/srv/ftp/backups`. Si vemos el archivo, significa que el script se ejecuto correctamente
+
+Luego de esta comprobacion, modificamos `sudo cron -e` y escribimos una ultima linea, `30 23 * * * /usr/local/bin/ciber-backup.sh >> /var/log/ciber-backup.log 2>&1`
+Eso hara que todos los dias a las 23.30, se ejecute el script de backup
+
+Asi podemos verificar el contenido de los backups (tar) en el servidor ciber-files:
+~~~ bash
+tar -tzf archivo.tar.gz      # ver contenido de tar.gz
+tar -xzf archivo.tar.gz      # extraer tar.gz
+zcat archivo.sql.gz          # ver SQL comprimido
+gunzip archivo.sql.gz        # descomprimir SQL gz
+~~~
+
+Cómo funciona la rotación de 5 slots.
+
+~~~ bash
+1. date +%s        -> cantidad de segundos desde 01/01/1970
+2. / 86400         -> lo convierte a cantidad de días
+3. % 5             -> calcula el resto al dividir por 5
+4. + 1             -> lo convierte en slot 1, 2, 3, 4 o 5
+~~~
 
