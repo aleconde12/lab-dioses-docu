@@ -332,28 +332,140 @@ net use \\192.168.100.40\compartido /user:ciberfiles ciber123
 
 ## 9. Scripts de backup + cron
 
-Como vimos anteriormente, los backups se ejecutaran en el servidor ciber-web. Pero no podiamos ejecutar este paso hasta que esten arriba los servidores ciber-db y ciber-files.
-Basicamente se respalda: /var/www/html y base laboratorio_db (en ciber-db) y se sube a ciber-files por FTP (/srv/ftp/backups)
+### Como funciona
+Los backups se ejecutan desde el servidor ciber-web, ya que desde allí se tiene acceso tanto al contenido de la aplicación web como a la base de datos ubicada en ciber-db.
 
-Primero, ejecutamos manualmente, `sudo bash /usr/local/bin/ciber-backup.sh`. Si no hubo mensajes de error, nos movemos a "ciber-files" y revisamos `/srv/ftp/backups`. Si vemos el archivo, significa que el script se ejecuto correctamente
+El script utilizado es:
 
-Luego de esta comprobacion, modificamos `sudo cron -e` y escribimos una ultima linea, `30 23 * * * /usr/local/bin/ciber-backup.sh >> /var/log/ciber-backup.log 2>&1`
-Eso hara que todos los dias a las 23.30, se ejecute el script de backup
+`/usr/local/bin/ciber-backup.sh` que copiamos en el paso 5 (ciber-web)
 
-Asi podemos verificar el contenido de los backups (tar) en el servidor ciber-files:
-~~~ bash
-tar -tzf archivo.tar.gz      # ver contenido de tar.gz
-tar -xzf archivo.tar.gz      # extraer tar.gz
-zcat archivo.sql.gz          # ver SQL comprimido
-gunzip archivo.sql.gz        # descomprimir SQL gz
+Este script realiza las siguientes tareas:
+
+Genera un backup del directorio de la aplicación web:
+/var/www/html
+Genera un dump de la base de datos:
+laboratorio_db
+Comprime ambos respaldos en un único archivo .tar.gz.
+Sube el backup final al servidor FTP ciber-files, dentro del directorio:
+/srv/ftp/backups
+Se desconecta automáticamente del servidor FTP al finalizar la transferencia.
+Prueba manual del backup
+
+Antes de automatizar la tarea con cron, se ejecutó el script manualmente desde ciber-web:
+
+`sudo /usr/local/bin/ciber-backup.sh`
+
+Si el script finaliza sin errores, luego se valida el resultado en el servidor ciber-files:
+
+`ls -lh /srv/ftp/backups`
+
+Si el archivo aparece dentro de ese directorio, significa que el backup fue generado correctamente, transferido al servidor FTP y almacenado en la ubicación esperada.
+
+### Rotación de backups
+
+Para cumplir con la consigna, se implementó una rotación circular de 5 backups mediante slots numerados del 1 al 5.
+El script mantiene un contador persistente de ejecuciones. En cada ejecución, el contador aumenta en 1 y se calcula qué slot corresponde utilizar.
+
+La lógica es la siguiente:
+
+~~~bash
+Ejecución 1  -> slot1
+Ejecución 2  -> slot2
+Ejecución 3  -> slot3
+Ejecución 4  -> slot4
+Ejecución 5  -> slot5
+Ejecución 6  -> slot1, reemplaza el backup anterior del slot1
+Ejecución 7  -> slot2, reemplaza el backup anterior del slot2
 ~~~
 
-Cómo funciona la rotación de 5 slots.
+De esta forma, siempre se conservan como máximo los últimos 5 backups. A partir de la sexta ejecución, el backup nuevo sobrescribe el backup más antiguo según el slot correspondiente.
+
+Antes de subir el nuevo archivo al FTP, el script elimina del servidor remoto cualquier backup anterior que pertenezca al mismo slot. Luego sube el nuevo archivo comprimido.
+
+Ejemplo de nombres generados:
+~~~bash
+backup_2026-06-23_153001_run1_slot1.tar.gz
+backup_2026-06-23_153010_run2_slot2.tar.gz
+backup_2026-06-23_153020_run3_slot3.tar.gz
+backup_2026-06-23_153030_run4_slot4.tar.gz
+backup_2026-06-23_153040_run5_slot5.tar.gz
+backup_2026-06-23_153050_run6_slot1.tar.gz
+~~~
+
+En este ejemplo, la ejecución 6 vuelve a utilizar el slot1, reemplazando el backup de la ejecución 1.
+
+### Validación de la rotación
+
+Para validar el funcionamiento de la rotación, se ejecutó el script varias veces seguidas:
+~~~ bash
+for i in {1..7}; do
+  sudo /usr/local/bin/ciber-backup.sh
+  sleep 1
+done
+~~~
+
+Luego, desde ciber-files, se verificó la cantidad de archivos existentes en el directorio de backups:
 
 ~~~ bash
-1. date +%s        -> cantidad de segundos desde 01/01/1970
-2. / 86400         -> lo convierte a cantidad de días
-3. % 5             -> calcula el resto al dividir por 5
-4. + 1             -> lo convierte en slot 1, 2, 3, 4 o 5
+ls -lh /srv/ftp/backups
+ls -1 /srv/ftp/backups/backup_*.tar.gz | wc -l
 ~~~
+
+El resultado esperado es que existan como máximo 5 archivos de backup, incluso después de ejecutar el script 6 o 7 veces.
+
+Ejemplo esperado luego de 7 ejecuciones:
+~~~ bash
+backup_..._run3_slot3.tar.gz
+backup_..._run4_slot4.tar.gz
+backup_..._run5_slot5.tar.gz
+backup_..._run6_slot1.tar.gz
+backup_..._run7_slot2.tar.gz
+~~~
+
+Esto demuestra que el sexto backup sobrescribe el primer slot y que el séptimo backup sobrescribe el segundo slot, conservando siempre una rotación máxima de 5 archivos.
+
+### Programación con cron
+
+Una vez validado el funcionamiento manual del script, se configuró su ejecución automática mediante cron.
+Para editar el crontab del usuario root:
+
+`sudo crontab -e`
+
+Se agregó la siguiente línea:
+
+`30 23 * * * /usr/local/bin/ciber-backup.sh >> /var/log/ciber-backup.log 2>&1`
+
+Esto ejecuta el script todos los días a las 23:30 y guarda la salida en el archivo de log:
+
+`/var/log/ciber-backup.log`
+
+La configuración puede verificarse con:
+
+`sudo crontab -l`
+
+Y el log puede revisarse con:
+
+`sudo tail -f /var/log/ciber-backup.log`
+
+### Verificación del contenido de los backups
+
+Para revisar el contenido del archivo .tar.gz generado:
+
+`tar -tzf archivo.tar.gz`
+
+Para extraer el contenido:
+
+`tar -xzf archivo.tar.gz`
+
+Para ver el contenido del dump SQL comprimido:
+
+`zcat archivo.sql.gz`
+
+Para descomprimir el archivo SQL:
+
+`gunzip archivo.sql.gz`
+
+### Resultado final
+
+Con esta configuración, el laboratorio cumple con el requerimiento de generar backups automáticos diarios de la aplicación web y de la base de datos, conservar únicamente los últimos 5 backups mediante rotación circular, transferirlos a un servidor FTP y finalizar la conexión luego de la subida.
 
