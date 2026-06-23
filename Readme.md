@@ -29,6 +29,7 @@ Este es un listado de lo que necesitamos en cada VM y una descripcion breve de p
 -  htop: Ver procesos y consumo
 -  tree: Ver estructura de directorios
 -  less: Visualizar archivos largos
+-  ufw: Administrar reglas de firewall
 
 Nota: Si bien varios paquetes ya vienen incluidos en debian 13, es mejor instalar todo en la golden image para que luego no nos falte ninguno.
 
