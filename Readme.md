@@ -326,7 +326,7 @@ Luego, para terminar de pulir las conexiones con la red interna del ciber, reali
 - Corremos este comando para que funcione el usuario en samba:
 ~~~ bash
 net use * /delete /y
-net use \\192.168.100.40\compartido /user:ciberfiles ciber123
+net use Z: \\192.168.100.40\compartido /user:ciber ciber123 /persistent:yes
 ~~~
 - Y en este punto, ya deberiamos tener acceso a `\\192.168.100.40\compartido` y poder dejar archivos en toda la red interna, tambien deberiamos poder ingresar al navegador, y llegar a `http://ciber-web`, y visualizar el front del web server del ciber.
 
